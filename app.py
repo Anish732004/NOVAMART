@@ -72,31 +72,31 @@ st.sidebar.info(
 
 # Route to selected page
 if page == "📊 Executive Overview":
-    from pages import executive_overview
+    from page_modules import executive_overview
     executive_overview.show()
 
 elif page == "📈 Campaign Analytics":
-    from pages import campaign_analytics
+    from page_modules import campaign_analytics
     campaign_analytics.show()
 
 elif page == "👥 Customer Insights":
-    from pages import customer_insights
+    from page_modules import customer_insights
     customer_insights.show()
 
 elif page == "🛍️ Product Performance":
-    from pages import product_performance
+    from page_modules import product_performance
     product_performance.show()
 
 elif page == "🗺️ Geographic Analysis":
-    from pages import geographic_analysis
+    from page_modules import geographic_analysis
     geographic_analysis.show()
 
 elif page == "🎯 Attribution & Funnel":
-    from pages import attribution_funnel
+    from page_modules import attribution_funnel
     attribution_funnel.show()
 
 elif page == "🤖 ML Model Evaluation":
-    from pages import ml_evaluation
+    from page_modules import ml_evaluation
     ml_evaluation.show()
 
 # Footer
