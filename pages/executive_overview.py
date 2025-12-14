@@ -76,7 +76,7 @@ def show():
     
     # Channel Performance
     with col2:
-        st.subheader("Revenue by Marketing Channel")
+        st.subheader("Channel Performance")
         
         # Select metric
         metric = st.selectbox(
