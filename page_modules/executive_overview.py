@@ -86,13 +86,13 @@ def show():
         )
         
         metric_labels = {
-            'Revenue': 'Total Revenue (₹)',
-            'Conversions': 'Total Conversions',
-            'ROAS': 'Average ROAS'
+            'revenue': 'Total Revenue (₹)',
+            'conversions': 'Total Conversions',
+            'roas': 'Average ROAS'
         }
         
         try:
-            if metric == 'ROAS':
+            if metric == 'roas':
                 channel_perf = campaign_df.groupby('channel')['roas'].mean().reset_index()
                 channel_perf.columns = ['channel', 'roas']
             else:
