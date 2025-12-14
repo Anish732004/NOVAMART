@@ -49,20 +49,22 @@ def create_horizontal_bar_chart(data: pd.DataFrame, x_col: str, y_col: str,
         sorted_data = data
     
     if color_col and color_col in data.columns:
-        fig = px.barh(
+        fig = px.bar(
             sorted_data,
             x=x_col,
             y=y_col,
             color=color_col,
+            orientation='h',
             title=title,
             labels={x_col: x_col.replace('_', ' ').title(), 
                     y_col: y_col.replace('_', ' ').title()}
         )
     else:
-        fig = px.barh(
+        fig = px.bar(
             sorted_data,
             x=x_col,
             y=y_col,
+            orientation='h',
             title=title,
             labels={x_col: x_col.replace('_', ' ').title(), 
                     y_col: y_col.replace('_', ' ').title()}
