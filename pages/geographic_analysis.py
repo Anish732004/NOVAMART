@@ -16,183 +16,153 @@ def show():
     """Display Geographic Analysis page."""
     
     st.header("🗺️ Geographic Analysis")
-    st.markdown("Analyze marketing performance across India's states and regions")
+    st.markdown("Analyze marketing performance across regions")
     
     # Load data
     geo_df = load_geographic_data()
     
+    # Display available columns
+    st.write(f"Available columns: {list(geo_df.columns)}")
+    
+    # Identify available columns
+    numeric_cols = geo_df.select_dtypes(include=['number']).columns.tolist()
+    text_cols = geo_df.select_dtypes(include=['object']).columns.tolist()
+    
+    if not numeric_cols:
+        st.error("No numeric columns found in geographic data")
+        return
+    
+    # Identify the location column (state/region)
+    location_col = None
+    if 'state' in geo_df.columns:
+        location_col = 'state'
+    elif 'region' in geo_df.columns:
+        location_col = 'region'
+    elif text_cols:
+        location_col = text_cols[0]
+    else:
+        st.error("No location column found")
+        return
+    
     # Section 1: State-wise Revenue (Choropleth alternative)
-    st.subheader("1. State Revenue Performance")
+    st.subheader("1. Regional Performance Analysis")
     
     col1, col2 = st.columns(2)
     
     with col1:
         metric = st.selectbox(
             "Select Metric",
-            options=['revenue', 'customers', 'market_penetration', 'yoy_growth']
-                   if 'yoy_growth' in geo_df.columns
-                   else ['revenue', 'customers', 'market_penetration'],
+            options=numeric_cols,
             key='geo_metric'
         )
     
-    geo_sorted = geo_df.sort_values(metric, ascending=True)
-    
-    fig = create_horizontal_bar_chart(
-        geo_sorted,
-        metric,
-        'state' if 'state' in geo_df.columns else 'region',
-        f'{metric.replace("_", " ").title()} by State'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    try:
+        geo_sorted = geo_df.sort_values(metric, ascending=True)
+        
+        fig = create_horizontal_bar_chart(
+            geo_sorted,
+            metric,
+            location_col,
+            f'{metric.replace("_", " ").title()} by {location_col.title()}'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error creating chart: {str(e)}")
     
     # Section 2: Top Performing States
-    st.subheader("2. Top Performing States")
+    st.subheader("2. Top Performing Regions")
     
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("🥇 Top Revenue State", geo_df.loc[geo_df['revenue'].idxmax(), 
-                                                      'state' if 'state' in geo_df.columns else 'region'],
-                 f"₹{format_number(geo_df['revenue'].max())}")
-    
-    with col2:
-        st.metric("👥 Most Customers", geo_df.loc[geo_df['customers'].idxmax(),
-                                                   'state' if 'state' in geo_df.columns else 'region'],
-                 f"{format_number(geo_df['customers'].max(), decimals=0)} customers")
-    
-    with col3:
-        if 'market_penetration' in geo_df.columns:
-            st.metric("📊 Highest Penetration", geo_df.loc[geo_df['market_penetration'].idxmax(),
-                                                           'state' if 'state' in geo_df.columns else 'region'],
-                     f"{geo_df['market_penetration'].max():.2f}%")
+    try:
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if numeric_cols:
+                top_col = numeric_cols[0]
+                top_val = geo_df[top_col].max()
+                top_loc = geo_df.loc[geo_df[top_col].idxmax(), location_col]
+                st.metric(f"Top {top_col.title()}", top_loc, f"{format_number(top_val)}")
+        
+        with col2:
+            if len(numeric_cols) > 1:
+                second_col = numeric_cols[1]
+                second_val = geo_df[second_col].max()
+                second_loc = geo_df.loc[geo_df[second_col].idxmax(), location_col]
+                st.metric(f"Top {second_col.title()}", second_loc, f"{format_number(second_val, decimals=0)}")
+        
+        with col3:
+            if len(numeric_cols) > 2:
+                third_col = numeric_cols[2]
+                third_val = geo_df[third_col].max()
+                third_loc = geo_df.loc[geo_df[third_col].idxmax(), location_col]
+                st.metric(f"Top {third_col.title()}", third_loc, f"{third_val:.2f}")
+    except Exception as e:
+        st.error(f"Error displaying metrics: {str(e)}")
     
     # Section 3: Regional Summary Table
     st.subheader("3. Regional Performance Summary")
     
-    summary_cols = ['revenue', 'customers', 'market_penetration']
-    if 'satisfaction' in geo_df.columns:
-        summary_cols.append('satisfaction')
-    if 'yoy_growth' in geo_df.columns:
-        summary_cols.append('yoy_growth')
-    
-    available_cols = [col for col in summary_cols if col in geo_df.columns]
-    
-    summary_table = geo_df[['state' if 'state' in geo_df.columns else 'region'] + available_cols].copy()
-    summary_table = summary_table.sort_values('revenue', ascending=False)
-    
-    column_names = ['State/Region'] + [col.replace('_', ' ').title() for col in available_cols]
-    summary_table.columns = column_names
-    
-    st.dataframe(summary_table, use_container_width=True)
-    
-    # Section 4: Growth Analysis
-    if 'yoy_growth' in geo_df.columns:
-        st.subheader("4. Year-over-Year Growth Analysis")
+    try:
+        # Use available numeric columns
+        cols_to_show = [location_col] + numeric_cols[:5]  # Show first 5 numeric columns
+        summary_table = geo_df[cols_to_show].copy()
         
-        growth_sorted = geo_df.sort_values('yoy_growth', ascending=True)
+        # Sort by first numeric column
+        if numeric_cols:
+            summary_table = summary_table.sort_values(numeric_cols[0], ascending=False)
         
-        fig = create_horizontal_bar_chart(
-            growth_sorted,
-            'yoy_growth',
-            'state' if 'state' in geo_df.columns else 'region',
-            'YoY Growth Rate by State'
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        col1, col2 = st.columns(2)
+        st.dataframe(summary_table, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error creating summary table: {str(e)}")
+    
+    # Section 4: Additional Analysis Charts
+    st.subheader("4. Regional Comparisons")
+    
+    # Let user select which columns to analyze
+    cols_to_analyze = st.multiselect(
+        "Select columns to visualize",
+        options=numeric_cols,
+        default=numeric_cols[:3] if len(numeric_cols) >= 3 else numeric_cols,
+        key='geo_analysis'
+    )
+    
+    for col in cols_to_analyze:
+        try:
+            sorted_data = geo_df.sort_values(col, ascending=True)
+            fig = create_horizontal_bar_chart(
+                sorted_data,
+                col,
+                location_col,
+                f'{col.replace("_", " ").title()} by {location_col.title()}'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Could not create chart for {col}: {str(e)}")
+    
+    # Section 5: Geographic Metrics Overview
+    st.subheader("5. Geographic Overview Metrics")
+    
+    try:
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Highest Growth", 
-                     geo_df.loc[geo_df['yoy_growth'].idxmax(), 
-                               'state' if 'state' in geo_df.columns else 'region'],
-                     f"{geo_df['yoy_growth'].max():.2f}%")
+            st.metric("Total Regions", len(geo_df))
         
         with col2:
-            st.metric("Lowest Growth",
-                     geo_df.loc[geo_df['yoy_growth'].idxmin(),
-                               'state' if 'state' in geo_df.columns else 'region'],
-                     f"{geo_df['yoy_growth'].min():.2f}%")
-    
-    # Section 5: Customer Satisfaction by Region
-    if 'satisfaction' in geo_df.columns:
-        st.subheader("5. Customer Satisfaction by Region")
+            if numeric_cols:
+                st.metric(f"Total {numeric_cols[0].title()}", 
+                         f"₹{format_number(geo_df[numeric_cols[0]].sum())}")
         
-        satisfaction_sorted = geo_df.sort_values('satisfaction', ascending=True)
+        with col3:
+            if len(numeric_cols) > 1:
+                st.metric(f"Avg {numeric_cols[1].title()}", 
+                         f"{format_number(geo_df[numeric_cols[1]].mean(), decimals=0)}")
         
-        fig = create_horizontal_bar_chart(
-            satisfaction_sorted,
-            'satisfaction',
-            'state' if 'state' in geo_df.columns else 'region',
-            'Average Satisfaction Score by State'
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # Section 6: Market Penetration Analysis
-    if 'market_penetration' in geo_df.columns:
-        st.subheader("6. Market Penetration Analysis")
-        
-        penetration_sorted = geo_df.sort_values('market_penetration', ascending=True)
-        
-        fig = create_horizontal_bar_chart(
-            penetration_sorted,
-            'market_penetration',
-            'state' if 'state' in geo_df.columns else 'region',
-            'Market Penetration by State (%)'
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.info(f"Average Market Penetration: {geo_df['market_penetration'].mean():.2f}% | "
-               f"Highest: {geo_df['market_penetration'].max():.2f}% | "
-               f"Lowest: {geo_df['market_penetration'].min():.2f}%")
-    
-    # Section 7: Geographic Metrics Overview
-    st.subheader("7. Geographic Overview Metrics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total States", len(geo_df))
-    
-    with col2:
-        st.metric("Total Revenue", f"₹{format_number(geo_df['revenue'].sum())}")
-    
-    with col3:
-        st.metric("Total Customers", f"{format_number(geo_df['customers'].sum(), decimals=0)}")
-    
-    with col4:
-        if 'satisfaction' in geo_df.columns:
-            st.metric("Avg Satisfaction", f"{geo_df['satisfaction'].mean():.2f}/5")
-    
-    # Section 8: Regional Classification
-    st.subheader("8. States Classification")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.write("**High Revenue, High Growth States**")
-        if 'yoy_growth' in geo_df.columns:
-            high_performers = geo_df[
-                (geo_df['revenue'] > geo_df['revenue'].median()) &
-                (geo_df['yoy_growth'] > geo_df['yoy_growth'].median())
-            ][['state' if 'state' in geo_df.columns else 'region', 'revenue', 'yoy_growth']]
-            
-            if len(high_performers) > 0:
-                st.dataframe(high_performers, use_container_width=True)
-            else:
-                st.info("No high-performing states found")
-    
-    with col2:
-        st.write("**Growth Opportunity States**")
-        if 'yoy_growth' in geo_df.columns:
-            growth_potential = geo_df[
-                (geo_df['revenue'] < geo_df['revenue'].median()) &
-                (geo_df['yoy_growth'] > geo_df['yoy_growth'].median())
-            ][['state' if 'state' in geo_df.columns else 'region', 'revenue', 'yoy_growth']]
-            
-            if len(growth_potential) > 0:
-                st.dataframe(growth_potential, use_container_width=True)
-            else:
-                st.info("No growth opportunity states found")
+        with col4:
+            if len(numeric_cols) > 2:
+                st.metric(f"Avg {numeric_cols[2].title()}", 
+                         f"{geo_df[numeric_cols[2]].mean():.2f}")
+    except Exception as e:
+        st.error(f"Error displaying metrics: {str(e)}")
     
     # Raw data viewer
     with st.expander("📋 View Raw Geographic Data"):

@@ -260,19 +260,33 @@ def create_scatter_plot(data: pd.DataFrame, x_col: str, y_col: str,
     """
     Create a scatter plot with optional trend line.
     """
-    trendline_opt = 'ols' if trendline else None
+    try:
+        trendline_opt = 'ols' if trendline else None
+        
+        fig = px.scatter(
+            data,
+            x=x_col,
+            y=y_col,
+            color=color_col,
+            size=size_col,
+            trendline=trendline_opt,
+            title=title,
+            labels={x_col: x_col.replace('_', ' ').title(),
+                    y_col: y_col.replace('_', ' ').title()}
+        )
+    except (ImportError, Exception):
+        # Fallback without trendline if statsmodels not available
+        fig = px.scatter(
+            data,
+            x=x_col,
+            y=y_col,
+            color=color_col,
+            size=size_col,
+            title=title,
+            labels={x_col: x_col.replace('_', ' ').title(),
+                    y_col: y_col.replace('_', ' ').title()}
+        )
     
-    fig = px.scatter(
-        data,
-        x=x_col,
-        y=y_col,
-        color=color_col,
-        size=size_col,
-        trendline=trendline_opt,
-        title=title,
-        labels={x_col: x_col.replace('_', ' ').title(),
-                y_col: y_col.replace('_', ' ').title()}
-    )
     fig.update_layout(
         height=400,
         hovermode='closest',

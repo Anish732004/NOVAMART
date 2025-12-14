@@ -6,6 +6,7 @@ altair
 matplotlib
 seaborn
 scikit-learn
+statsmodels
 folium
 pydeck
 python-dateutil
