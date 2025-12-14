@@ -114,32 +114,8 @@ def show():
     except Exception as e:
         st.error(f"Error creating summary table: {str(e)}")
     
-    # Section 4: Additional Analysis Charts
-    st.subheader("4. Regional Comparisons")
-    
-    # Let user select which columns to analyze
-    cols_to_analyze = st.multiselect(
-        "Select columns to visualize",
-        options=numeric_cols,
-        default=numeric_cols[:3] if len(numeric_cols) >= 3 else numeric_cols,
-        key='geo_analysis'
-    )
-    
-    for col in cols_to_analyze:
-        try:
-            sorted_data = geo_df.sort_values(col, ascending=True)
-            fig = create_horizontal_bar_chart(
-                sorted_data,
-                col,
-                location_col,
-                f'{col.replace("_", " ").title()} by {location_col.title()}'
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Could not create chart for {col}: {str(e)}")
-    
-    # Section 5: Geographic Metrics Overview
-    st.subheader("5. Geographic Overview Metrics")
+    # Section 4: Geographic Metrics Overview
+    st.subheader("4. Geographic Overview Metrics")
     
     try:
         col1, col2, col3, col4 = st.columns(4)
