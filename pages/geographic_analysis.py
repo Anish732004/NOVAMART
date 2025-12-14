@@ -123,16 +123,6 @@ def show():
         with col1:
             st.metric("Total Regions", len(geo_df))
         
-        with col2:
-            if numeric_cols:
-                st.metric(f"Total {numeric_cols[0].title()}", 
-                         f"₹{format_number(geo_df[numeric_cols[0]].sum())}")
-        
-        with col3:
-            if len(numeric_cols) > 1:
-                st.metric(f"Avg {numeric_cols[1].title()}", 
-                         f"{format_number(geo_df[numeric_cols[1]].mean(), decimals=0)}")
-        
         with col4:
             if len(numeric_cols) > 2:
                 st.metric(f"Avg {numeric_cols[2].title()}", 
