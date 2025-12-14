@@ -93,18 +93,21 @@ def show():
     )
     
     if 'region' in campaign_df.columns:
-        cumulative_df = campaign_df[campaign_df['region'].isin(region_filter)]
+        cumulative_df = campaign_df[campaign_df['region'].isin(region_filter)].copy()
     else:
-        cumulative_df = campaign_df
+        cumulative_df = campaign_df.copy()
     
-    cumulative_df = cumulative_df.sort_values('date').copy()
-    cumulative_df = cumulative_df.groupby('channel')['conversions'].cumsum().reset_index()
-    cumulative_df['date'] = campaign_df.sort_values('date')['date'].values
+    # Sort by date and calculate cumulative conversions per channel
+    cumulative_df = cumulative_df.sort_values('date')
+    cumulative_df['cumulative_conversions'] = cumulative_df.groupby('channel')['conversions'].cumsum()
+    
+    # Aggregate by date and channel
+    cumulative_agg = cumulative_df.groupby(['date', 'channel'])['cumulative_conversions'].sum().reset_index()
     
     fig = create_area_chart(
-        cumulative_df,
+        cumulative_agg,
         'date',
-        'conversions',
+        'cumulative_conversions',
         'Cumulative Conversions Over Time',
         group_col='channel'
     )

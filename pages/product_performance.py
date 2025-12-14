@@ -22,30 +22,45 @@ def show():
     # Load data
     product_df = load_product_sales()
     
+    # Display available columns for debugging
+    st.write(f"Available columns: {list(product_df.columns)}")
+    
+    # Identify available numeric columns
+    numeric_cols = product_df.select_dtypes(include=['number']).columns.tolist()
+    
     # Section 1: Product Category Performance
     st.subheader("1. Sales by Product Category")
+    
+    if 'category' not in product_df.columns:
+        st.warning("Category column not found in product data")
+        return
     
     col1, col2 = st.columns(2)
     
     with col1:
+        # Filter to numeric columns that might represent sales/units
+        metric_options = [col for col in numeric_cols if col not in ['id', 'product_id']]
+        if not metric_options:
+            st.warning("No numeric metrics available")
+            return
+            
         metric_type = st.selectbox(
             "Select Metric",
-            options=['sales', 'units', 'profit_margin'] 
-                   if 'profit_margin' in product_df.columns 
-                   else ['sales', 'units'],
+            options=metric_options,
             key='product_metric'
         )
     
-    if 'category' in product_df.columns:
-        category_perf = product_df.groupby('category').agg({
-            'sales': 'sum',
-            'units': 'sum'
-        }).reset_index()
+    try:
+        # Build aggregation dictionary based on available columns
+        agg_dict = {metric_type: 'sum'}
         
-        if 'profit_margin' in product_df.columns:
-            category_perf['profit_margin'] = product_df.groupby('category')['profit_margin'].mean().values
+        # Add other numeric columns if they exist
+        for col in numeric_cols:
+            if col != metric_type and col not in ['id', 'product_id']:
+                agg_dict[col] = 'sum'
         
-        category_perf = category_perf.sort_values('sales', ascending=True)
+        category_perf = product_df.groupby('category').agg(agg_dict).reset_index()
+        category_perf = category_perf.sort_values(metric_type, ascending=True)
         
         fig = create_horizontal_bar_chart(
             category_perf,
@@ -56,115 +71,135 @@ def show():
         st.plotly_chart(fig, use_container_width=True)
         
         # Category summary table
-        summary = product_df.groupby('category').agg({
-            'sales': 'sum',
-            'units': 'sum',
-            'product_id': 'count'
-        }).round(2)
-        summary.columns = ['Total Sales (₹)', 'Total Units', 'Products']
-        summary['Avg Sale'] = (summary['Total Sales (₹)'] / summary['Total Units']).round(2)
-        
-        st.dataframe(summary, use_container_width=True)
+        st.dataframe(category_perf, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error creating category performance chart: {str(e)}")
     
     # Section 2: Regional Product Performance
     st.subheader("2. Product Sales by Region and Quarter")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if 'region' in product_df.columns:
+    if 'region' not in product_df.columns or 'quarter' not in product_df.columns:
+        st.info("Region or Quarter data not available")
+    else:
+        col1, col2 = st.columns(2)
+        
+        with col1:
             selected_regions = st.multiselect(
                 "Select Regions",
                 options=product_df['region'].unique(),
                 default=product_df['region'].unique(),
                 key='product_regions'
             )
-    
-    with col2:
-        if 'quarter' in product_df.columns:
+        
+        with col2:
             selected_quarters = st.multiselect(
                 "Select Quarters",
                 options=sorted(product_df['quarter'].unique()),
                 default=sorted(product_df['quarter'].unique()),
                 key='product_quarters'
             )
-    
-    if 'region' in product_df.columns and 'quarter' in product_df.columns:
-        regional_data = product_df[
-            (product_df['region'].isin(selected_regions)) &
-            (product_df['quarter'].isin(selected_quarters))
-        ]
         
-        region_perf = regional_data.groupby(['region', 'quarter'])['sales'].sum().reset_index()
-        region_perf['Quarter'] = 'Q' + region_perf['quarter'].astype(str)
-        
-        fig = create_grouped_bar_chart(
-            region_perf,
-            'region',
-            'sales',
-            'Quarter',
-            'Sales by Region and Quarter'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            regional_data = product_df[
+                (product_df['region'].isin(selected_regions)) &
+                (product_df['quarter'].isin(selected_quarters))
+            ]
+            
+            # Use first available numeric column for aggregation
+            sales_col = [col for col in numeric_cols if col not in ['id', 'product_id']][0]
+            region_perf = regional_data.groupby(['region', 'quarter'])[sales_col].sum().reset_index()
+            region_perf['Quarter'] = 'Q' + region_perf['quarter'].astype(str)
+            
+            fig = create_grouped_bar_chart(
+                region_perf,
+                'region',
+                sales_col,
+                'Quarter',
+                f'Sales by Region and Quarter'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error creating regional performance chart: {str(e)}")
     
     # Section 3: Profit Margin Analysis
-    if 'profit_margin' in product_df.columns:
+    margin_cols = [col for col in product_df.columns if 'margin' in col.lower() or 'profit' in col.lower()]
+    
+    if margin_cols:
         st.subheader("3. Profitability Analysis")
+        
+        margin_col = margin_cols[0]
         
         col1, col2 = st.columns(2)
         
         with col1:
-            # Margin by category
-            margin_data = product_df.groupby('category').agg({
-                'profit_margin': 'mean',
-                'sales': 'sum'
-            }).reset_index().sort_values('profit_margin', ascending=True)
-            
-            fig = create_horizontal_bar_chart(
-                margin_data,
-                'profit_margin',
-                'category',
-                'Average Profit Margin by Category'
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            try:
+                # Margin by category
+                margin_data = product_df.groupby('category').agg({
+                    margin_col: 'mean'
+                }).reset_index().sort_values(margin_col, ascending=True)
+                
+                fig = create_horizontal_bar_chart(
+                    margin_data,
+                    margin_col,
+                    'category',
+                    f'Average {margin_col.title()} by Category'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error creating margin chart: {str(e)}")
         
         with col2:
-            # Margin statistics
-            margin_stats = pd.DataFrame({
-                'Metric': ['Highest Margin', 'Lowest Margin', 'Avg Margin', 'Median Margin'],
-                'Value': [
-                    f"{product_df['profit_margin'].max():.2f}%",
-                    f"{product_df['profit_margin'].min():.2f}%",
-                    f"{product_df['profit_margin'].mean():.2f}%",
-                    f"{product_df['profit_margin'].median():.2f}%"
-                ]
-            })
-            
-            st.dataframe(margin_stats, use_container_width=True)
+            try:
+                # Margin statistics
+                margin_stats = pd.DataFrame({
+                    'Metric': ['Highest', 'Lowest', 'Average', 'Median'],
+                    'Value': [
+                        f"{product_df[margin_col].max():.2f}%",
+                        f"{product_df[margin_col].min():.2f}%",
+                        f"{product_df[margin_col].mean():.2f}%",
+                        f"{product_df[margin_col].median():.2f}%"
+                    ]
+                })
+                
+                st.dataframe(margin_stats, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error calculating margin stats: {str(e)}")
     
     # Section 4: Top Products Analysis
     st.subheader("4. Top Products by Sales")
     
-    col1, col2 = st.columns(2)
+    product_col = None
+    if 'product_name' in product_df.columns:
+        product_col = 'product_name'
+    elif 'product_id' in product_df.columns:
+        product_col = 'product_id'
+    else:
+        # Try to find any text column
+        text_cols = product_df.select_dtypes(include=['object']).columns.tolist()
+        if text_cols:
+            product_col = text_cols[0]
     
-    with col1:
-        n_products = st.slider("Number of Top Products", 5, 20, 10, key='top_products')
-    
-    if 'product_name' in product_df.columns or 'product_id' in product_df.columns:
-        product_col = 'product_name' if 'product_name' in product_df.columns else 'product_id'
+    if product_col:
+        col1, col2 = st.columns(2)
         
-        top_products = product_df.groupby(product_col).agg({
-            'sales': 'sum',
-            'units': 'sum'
-        }).nlargest(n_products, 'sales').reset_index()
+        with col1:
+            n_products = st.slider("Number of Top Products", 5, 20, 10, key='top_products')
         
-        fig = create_horizontal_bar_chart(
-            top_products,
-            'sales',
-            product_col,
-            f'Top {n_products} Products by Sales'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            sales_col = [col for col in numeric_cols if col not in ['id', 'product_id']][0]
+            top_products = product_df.groupby(product_col).agg({
+                sales_col: 'sum'
+            }).nlargest(n_products, sales_col).reset_index()
+            
+            fig = create_horizontal_bar_chart(
+                top_products,
+                sales_col,
+                product_col,
+                f'Top {n_products} Products by {sales_col.title()}'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error creating top products chart: {str(e)}")
     
     # Section 5: Product Performance Metrics
     st.subheader("5. Overall Product Metrics")
@@ -175,37 +210,42 @@ def show():
         st.metric("Total Products", len(product_df))
     
     with col2:
-        st.metric("Total Sales", f"₹{format_number(product_df['sales'].sum())}")
+        if numeric_cols:
+            sales_col = numeric_cols[0]
+            st.metric(f"Total {sales_col.title()}", f"₹{format_number(product_df[sales_col].sum())}")
     
     with col3:
-        st.metric("Total Units Sold", f"{format_number(product_df['units'].sum(), decimals=0)}")
+        st.metric("Rows", len(product_df))
     
     with col4:
-        if 'profit_margin' in product_df.columns:
-            st.metric("Avg Margin", f"{product_df['profit_margin'].mean():.2f}%")
+        if margin_cols:
+            st.metric(f"Avg {margin_cols[0].title()}", f"{product_df[margin_cols[0]].mean():.2f}%")
     
     # Section 6: Subcategory Breakdown
-    if 'subcategory' in product_df.columns:
+    if 'subcategory' in product_df.columns and 'category' in product_df.columns:
         st.subheader("6. Sales by Subcategory")
         
         selected_category = st.selectbox(
             "Select Category",
-            options=product_df['category'].unique() if 'category' in product_df.columns else [],
+            options=product_df['category'].unique(),
             key='subcategory_filter'
         )
         
-        if 'category' in product_df.columns:
+        try:
             subcat_data = product_df[product_df['category'] == selected_category]
-            subcat_perf = subcat_data.groupby('subcategory')['sales'].sum().reset_index()
-            subcat_perf = subcat_perf.sort_values('sales', ascending=True)
+            sales_col = [col for col in numeric_cols if col not in ['id', 'product_id']][0]
+            subcat_perf = subcat_data.groupby('subcategory')[sales_col].sum().reset_index()
+            subcat_perf = subcat_perf.sort_values(sales_col, ascending=True)
             
             fig = create_horizontal_bar_chart(
                 subcat_perf,
-                'sales',
+                sales_col,
                 'subcategory',
-                f'Sales by Subcategory - {selected_category}'
+                f'{sales_col.title()} by Subcategory - {selected_category}'
             )
             st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error creating subcategory chart: {str(e)}")
     
     # Raw data viewer
     with st.expander("📋 View Raw Product Data"):
