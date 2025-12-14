@@ -21,77 +21,79 @@ def show():
     # Section 1: Attribution Model Comparison
     st.subheader("1. Channel Attribution Model Comparison")
     
+    attribution_df = load_channel_attribution()
+    
     col1, col2 = st.columns(2)
     
+    # The attribution data has columns: channel, first_touch, last_touch, linear, time_decay, position_based
+    # These represent attribution models
+    attribution_models = [col for col in attribution_df.columns if col != 'channel']
+    
     with col1:
-        attribution_df = load_channel_attribution()
-        
-        if 'attribution_model' in attribution_df.columns:
-            models = attribution_df['attribution_model'].unique()
+        if attribution_models:
             selected_model = st.selectbox(
                 "Select Attribution Model",
-                options=models,
+                options=attribution_models,
                 key='attribution_model'
             )
-            
-            model_data = attribution_df[attribution_df['attribution_model'] == selected_model]
         else:
-            model_data = attribution_df
-            selected_model = "Overall"
+            st.warning("No attribution models found")
+            selected_model = None
     
     with col2:
-        st.write(f"**Selected Model:** {selected_model}")
-        st.info(f"Shows how different attribution models credit channels differently for conversions")
+        if selected_model:
+            st.write(f"**Selected Model:** {selected_model.replace('_', ' ').title()}")
+            st.info(f"Shows how different attribution models credit channels for conversions")
     
     # Prepare donut chart data
-    if 'channel' in model_data.columns and 'contribution_percent' in model_data.columns:
-        fig = create_donut_chart(
-            model_data,
-            'channel',
-            'contribution_percent',
-            f'Channel Attribution - {selected_model} Model',
-            hole=0.4
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Attribution details table
-        st.dataframe(model_data[['channel', 'contribution_percent']].sort_values('contribution_percent', ascending=False),
-                    use_container_width=True)
+    if selected_model and 'channel' in attribution_df.columns:
+        try:
+            chart_data = attribution_df[['channel', selected_model]].copy()
+            chart_data.columns = ['channel', 'contribution']
+            
+            fig = create_donut_chart(
+                chart_data,
+                'channel',
+                'contribution',
+                f'Channel Attribution - {selected_model.replace("_", " ").title()} Model',
+                hole=0.4
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Attribution details table
+            display_df = attribution_df[['channel', selected_model]].sort_values(selected_model, ascending=False)
+            display_df.columns = ['Channel', selected_model.replace('_', ' ').title()]
+            st.dataframe(display_df, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error creating attribution chart: {str(e)}")
     else:
         st.warning("Required columns not found in attribution data")
     
     # Section 2: Attribution Model Comparison Table
-    if 'attribution_model' in attribution_df.columns:
+    try:
+        # Create comparison table across all models
+        comparison_table = attribution_df.set_index('channel')[attribution_models].round(2)
+        
         st.subheader("2. Attribution Model Comparison")
-        
-        pivot_table = attribution_df.pivot_table(
-            index='channel',
-            columns='attribution_model',
-            values='contribution_percent',
-            aggfunc='sum'
-        ).fillna(0).round(2)
-        
-        st.dataframe(pivot_table, use_container_width=True)
+        st.dataframe(comparison_table, use_container_width=True)
         
         # Key insights
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Google Ads credit variation
-            if 'Google Ads' in pivot_table.index:
-                ga_credits = pivot_table.loc['Google Ads'].values
-                st.metric("Google Ads Credit Range",
-                         f"{ga_credits.min():.1f}% - {ga_credits.max():.1f}%")
+            # Find channel with highest variation across models
+            if len(attribution_models) > 0 and 'channel' in attribution_df.columns:
+                channel_variation = attribution_df.set_index('channel')[attribution_models].std(axis=1)
+                max_var_channel = channel_variation.idxmax()
+                st.metric("Most Inconsistent Channel", max_var_channel, f"{channel_variation.max():.2f}")
         
         with col2:
-            # Email credit variation
-            if 'Email' in pivot_table.index:
-                email_credits = pivot_table.loc['Email'].values
-                st.metric("Email Credit Range",
-                         f"{email_credits.min():.1f}% - {email_credits.max():.1f}%")
+            st.metric("Number of Channels", len(attribution_df))
         
         with col3:
-            st.metric("Number of Models", len(attribution_df['attribution_model'].unique()))
+            st.metric("Number of Models", len(attribution_models))
+    except Exception as e:
+        st.error(f"Error creating attribution comparison table: {str(e)}")
     
     # Section 3: Marketing Funnel
     st.subheader("3. Marketing Funnel Analysis")

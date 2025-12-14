@@ -38,14 +38,14 @@ def show():
         )
     
     with col2:
-        if 'segment' in customer_df.columns:
+        if 'customer_segment' in customer_df.columns:
             show_segments = st.multiselect(
                 "Filter by Segment",
-                options=customer_df['segment'].unique(),
-                default=customer_df['segment'].unique(),
+                options=customer_df['customer_segment'].unique(),
+                default=customer_df['customer_segment'].unique(),
                 key='age_segments'
             )
-            age_data = customer_df[customer_df['segment'].isin(show_segments)]
+            age_data = customer_df[customer_df['customer_segment'].isin(show_segments)]
         else:
             age_data = customer_df
     
@@ -54,7 +54,7 @@ def show():
         'age',
         f'Customer Age Distribution (Bin size: {bin_size})',
         nbins=int(age_data['age'].max() / bin_size),
-        color_col='segment' if 'segment' in customer_df.columns else None
+        color_col='customer_segment' if 'customer_segment' in customer_df.columns else None
     )
     st.plotly_chart(fig, use_container_width=True)
     
@@ -65,7 +65,7 @@ def show():
     # Section 2: Lifetime Value Distribution by Segment
     st.subheader("2. Lifetime Value by Customer Segment")
     
-    if 'segment' in customer_df.columns:
+    if 'customer_segment' in customer_df.columns:
         show_points = st.checkbox(
             "Show Individual Points",
             value=False,
@@ -74,7 +74,7 @@ def show():
         
         fig = create_box_plot(
             customer_df,
-            'segment',
+            'customer_segment',
             'lifetime_value',
             'Lifetime Value Distribution by Segment',
             points='all' if show_points else 'outliers'
@@ -82,7 +82,7 @@ def show():
         st.plotly_chart(fig, use_container_width=True)
         
         # Segment statistics
-        segment_stats = customer_df.groupby('segment')['lifetime_value'].agg([
+        segment_stats = customer_df.groupby('customer_segment')['lifetime_value'].agg([
             'count', 'mean', 'median', 'min', 'max', 'std'
         ]).round(2)
         segment_stats.columns = ['Count', 'Mean LTV (₹)', 'Median LTV (₹)', 
@@ -101,7 +101,7 @@ def show():
         if 'nps_category' in customer_df.columns:
             split_by_channel = st.checkbox(
                 "Split by Acquisition Channel",
-                value=False,
+                value=True,
                 key='satisfaction_split'
             )
             
@@ -185,10 +185,10 @@ def show():
         st.metric("Avg Satisfaction", f"{avg_satisfaction:.2f}/5.0")
     
     # Section 6: Customer Segmentation Summary
-    if 'segment' in customer_df.columns:
+    if 'customer_segment' in customer_df.columns:
         st.subheader("6. Customer Segment Summary")
         
-        segment_summary = customer_df.groupby('segment').agg({
+        segment_summary = customer_df.groupby('customer_segment').agg({
             'customer_id': 'count',
             'age': 'mean',
             'income': 'mean',
