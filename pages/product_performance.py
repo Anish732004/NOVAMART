@@ -25,6 +25,15 @@ def show():
     # Display available columns for debugging
     st.write(f"Available columns: {list(product_df.columns)}")
     
+    # Extract year from date if available
+    if 'date' in product_df.columns and 'year' not in product_df.columns:
+        try:
+            product_df['date'] = pd.to_datetime(product_df['date'])
+            product_df['year'] = product_df['date'].dt.year
+            product_df['quarter'] = product_df['date'].dt.quarter
+        except:
+            pass
+    
     # Identify available numeric columns
     numeric_cols = product_df.select_dtypes(include=['number']).columns.tolist()
     
@@ -81,28 +90,41 @@ def show():
     if 'region' not in product_df.columns or 'quarter' not in product_df.columns:
         st.info("Region or Quarter data not available")
     else:
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
-        with col1:
+        # Year filter if available
+        if 'year' in product_df.columns:
+            with col1:
+                selected_years = st.multiselect(
+                    "Select Years",
+                    options=sorted(product_df['year'].unique()),
+                    default=sorted(product_df['year'].unique()),
+                    key='product_years'
+                )
+                year_filtered_df = product_df[product_df['year'].isin(selected_years)]
+        else:
+            year_filtered_df = product_df
+        
+        with col2 if 'year' in product_df.columns else col1:
             selected_regions = st.multiselect(
                 "Select Regions",
-                options=product_df['region'].unique(),
-                default=product_df['region'].unique(),
+                options=year_filtered_df['region'].unique(),
+                default=year_filtered_df['region'].unique(),
                 key='product_regions'
             )
         
-        with col2:
+        with col3 if 'year' in product_df.columns else col2:
             selected_quarters = st.multiselect(
                 "Select Quarters",
-                options=sorted(product_df['quarter'].unique()),
-                default=sorted(product_df['quarter'].unique()),
+                options=sorted(year_filtered_df['quarter'].unique()),
+                default=sorted(year_filtered_df['quarter'].unique()),
                 key='product_quarters'
             )
         
         try:
-            regional_data = product_df[
-                (product_df['region'].isin(selected_regions)) &
-                (product_df['quarter'].isin(selected_quarters))
+            regional_data = year_filtered_df[
+                (year_filtered_df['region'].isin(selected_regions)) &
+                (year_filtered_df['quarter'].isin(selected_quarters))
             ]
             
             # Use first available numeric column for aggregation
