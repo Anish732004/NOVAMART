@@ -170,6 +170,20 @@ def show():
     
     if feature_df is not None and not feature_df.empty:
         col1, col2 = st.columns(2)
+
+        with col1:
+            sort_order = st.radio(
+                "Sort Order",
+                options=['Ascending', 'Descending'],
+                horizontal=True,
+                key='feature_sort'
+            )
+        
+        feature_data = feature_df.copy()
+        if sort_order == 'Ascending':
+            feature_data = feature_data.sort_values(feature_data.columns[1])
+        else:
+            feature_data = feature_data.sort_values(feature_data.columns[1], ascending=False)
         
         fig = create_feature_importance_plot(feature_data)
         st.plotly_chart(fig, use_container_width=True)
