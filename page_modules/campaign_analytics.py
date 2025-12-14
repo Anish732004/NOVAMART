@@ -157,24 +157,16 @@ def show():
     # Section 4: Campaign Type Contribution
     st.subheader("4. Campaign Type Contribution to Spend")
     
-    stacked_mode = st.radio(
-        "View Mode",
-        options=['Absolute', '100% Stacked'],
-        horizontal=True,
-        key='stacked_mode'
-    )
-    
     if 'campaign_type' in campaign_df.columns:
         monthly_campaigns = campaign_df.groupby([pd.Grouper(key='date', freq='M'), 'campaign_type'])['spend'].sum().reset_index()
         
-        mode_name = 'relative' if stacked_mode == '100% Stacked' else 'absolute'
         fig = create_stacked_bar_chart(
             monthly_campaigns,
             'date',
             'spend',
             'campaign_type',
             f'Monthly Campaign Spend Contribution',
-            mode=mode_name
+            mode='absolute'
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
