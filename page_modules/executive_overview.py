@@ -81,18 +81,18 @@ def show():
         # Select metric
         metric = st.selectbox(
             "Select Metric",
-            options=['revenue', 'conversions', 'roas'],
+            options=['Revenue', 'Conversions', 'ROAS'],
             key='channel_metric'
         )
         
         metric_labels = {
-            'revenue': 'Total Revenue (₹)',
-            'conversions': 'Total Conversions',
-            'roas': 'Average ROAS'
+            'Revenue': 'Total Revenue (₹)',
+            'Conversions': 'Total Conversions',
+            'ROAS': 'Average ROAS'
         }
         
         try:
-            if metric == 'roas':
+            if metric == 'ROAS':
                 channel_perf = campaign_df.groupby('channel')['roas'].mean().reset_index()
                 channel_perf.columns = ['channel', 'roas']
             else:
