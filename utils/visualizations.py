@@ -114,21 +114,38 @@ def create_stacked_bar_chart(data: pd.DataFrame, x_col: str, y_col: str,
     mode : str
         'absolute' for stacked values or 'relative' for 100% stacked
     """
-    fig = px.bar(
-        data,
-        x=x_col,
-        y=y_col,
-        color=stack_col,
-        title=title,
-        barnorm='percent' if mode == 'relative' else None
-    )
-    fig.update_layout(
-        height=400,
-        barmode='stack',
-        hovermode='x unified',
-        plot_bgcolor='rgba(240,240,240,0.5)',
-        paper_bgcolor='white'
-    )
+    try:
+        fig = px.bar(
+            data,
+            x=x_col,
+            y=y_col,
+            color=stack_col,
+            title=title,
+            barmode='stack',
+            barnorm='percent' if mode == 'relative' else None
+        )
+        fig.update_layout(
+            height=400,
+            hovermode='x unified',
+            plot_bgcolor='rgba(240,240,240,0.5)',
+            paper_bgcolor='white'
+        )
+    except Exception as e:
+        # Fallback: create stacked chart without barnorm
+        fig = px.bar(
+            data,
+            x=x_col,
+            y=y_col,
+            color=stack_col,
+            title=title,
+            barmode='stack'
+        )
+        fig.update_layout(
+            height=400,
+            hovermode='x unified',
+            plot_bgcolor='rgba(240,240,240,0.5)',
+            paper_bgcolor='white'
+        )
     return fig
 
 
