@@ -25,15 +25,6 @@ def show():
     # Display available columns for debugging
     st.write(f"Available columns: {list(product_df.columns)}")
     
-    # Extract year from date if available
-    if 'date' in product_df.columns and 'year' not in product_df.columns:
-        try:
-            product_df['date'] = pd.to_datetime(product_df['date'])
-            product_df['year'] = product_df['date'].dt.year
-            product_df['quarter'] = product_df['date'].dt.quarter
-        except:
-            pass
-    
     # Identify available numeric columns
     numeric_cols = product_df.select_dtypes(include=['number']).columns.tolist()
     
