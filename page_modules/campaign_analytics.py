@@ -157,15 +157,12 @@ def show():
     # Section 4: Campaign Type Contribution
     st.subheader("4. Campaign Type Contribution to Spend")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        stacked_mode = st.radio(
-            "View Mode",
-            options=['Absolute', '100% Stacked'],
-            horizontal=True,
-            key='stacked_mode'
-        )
+    stacked_mode = st.radio(
+        "View Mode",
+        options=['Absolute', '100% Stacked'],
+        horizontal=True,
+        key='stacked_mode'
+    )
     
     if 'campaign_type' in campaign_df.columns:
         monthly_campaigns = campaign_df.groupby([pd.Grouper(key='date', freq='M'), 'campaign_type'])['spend'].sum().reset_index()
