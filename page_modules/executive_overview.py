@@ -92,11 +92,11 @@ def show():
         }
         
         try:
-            if metric == 'roas':
+            if metric.lower() == 'roas':
                 channel_perf = campaign_df.groupby('channel')['roas'].mean().reset_index()
                 channel_perf.columns = ['channel', 'roas']
             else:
-                channel_perf = campaign_df.groupby('channel')[metric].sum().reset_index()
+                channel_perf = campaign_df.groupby('channel')[metric.lower()].sum().reset_index()
             
             if channel_perf.empty:
                 st.warning("No data available for selected metric")
