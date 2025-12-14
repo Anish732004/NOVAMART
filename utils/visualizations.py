@@ -507,12 +507,41 @@ def create_learning_curve_plot(data: pd.DataFrame) -> go.Figure:
     """
     Create a learning curve visualization.
     """
+    # Handle flexible column names
+    x_col = None
+    train_col = None
+    val_col = None
+    
+    # Find the correct column names
+    for col in data.columns:
+        col_lower = col.lower()
+        if 'training_set' in col_lower or 'train_size' in col_lower or 'set_size' in col_lower:
+            x_col = col
+        elif 'train' in col_lower and 'score' in col_lower:
+            train_col = col
+        elif 'val' in col_lower and 'score' in col_lower:
+            val_col = col
+    
+    # Fallback to first few columns if not found
+    if not x_col:
+        x_col = data.columns[0]
+    if not train_col:
+        train_col = data.columns[1] if len(data.columns) > 1 else None
+    if not val_col:
+        val_col = data.columns[2] if len(data.columns) > 2 else None
+    
+    if not train_col or not val_col:
+        # Return a simple message if we can't find the right columns
+        fig = go.Figure()
+        fig.add_annotation(text="Insufficient data for learning curve visualization")
+        return fig
+    
     fig = go.Figure()
     
     # Training scores
     fig.add_trace(go.Scatter(
-        x=data['training_set_size'],
-        y=data['train_score'],
+        x=data[x_col],
+        y=data[train_col],
         name='Training Score',
         mode='lines+markers',
         line=dict(color='#1f77b4')
@@ -520,8 +549,8 @@ def create_learning_curve_plot(data: pd.DataFrame) -> go.Figure:
     
     # Validation scores
     fig.add_trace(go.Scatter(
-        x=data['training_set_size'],
-        y=data['val_score'],
+        x=data[x_col],
+        y=data[val_col],
         name='Validation Score',
         mode='lines+markers',
         line=dict(color='#ff7f0e')
@@ -529,7 +558,7 @@ def create_learning_curve_plot(data: pd.DataFrame) -> go.Figure:
     
     fig.update_layout(
         title='Learning Curve - Model Diagnostics',
-        xaxis_title='Training Set Size',
+        xaxis_title=x_col.replace('_', ' ').title(),
         yaxis_title='Score',
         height=400,
         hovermode='x unified',
@@ -545,18 +574,41 @@ def create_feature_importance_plot(data: pd.DataFrame, name_col: str = 'feature'
     """
     Create a feature importance bar chart with error bars.
     """
-    data_sorted = data.sort_values(importance_col)
+    try:
+        data_sorted = data.sort_values(importance_col)
+    except KeyError:
+        # Try to find the right column
+        numeric_cols = data.select_dtypes(include=['number']).columns.tolist()
+        if numeric_cols:
+            importance_col = numeric_cols[0]
+            data_sorted = data.sort_values(importance_col)
+        else:
+            fig = go.Figure()
+            fig.add_annotation(text="No numeric columns found for importance")
+            return fig
+    
+    # Handle feature name column
+    if name_col not in data.columns:
+        # Try to find a suitable name column
+        for col in data.columns:
+            if col != importance_col and col != std_col:
+                name_col = col
+                break
     
     fig = go.Figure()
+    
+    error_info = None
+    if std_col and std_col in data_sorted.columns:
+        error_info = dict(
+            type='data',
+            array=data_sorted[std_col],
+            visible=True
+        )
     
     fig.add_trace(go.Bar(
         y=data_sorted[name_col],
         x=data_sorted[importance_col],
-        error_x=dict(
-            type='data',
-            array=data_sorted[std_col] if std_col and std_col in data_sorted.columns else None,
-            visible=True
-        ) if std_col and std_col in data_sorted.columns else None,
+        error_x=error_info,
         orientation='h',
         marker=dict(color='#1f77b4'),
         text=data_sorted[importance_col].round(3),

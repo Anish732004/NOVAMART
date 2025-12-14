@@ -151,8 +151,11 @@ def show():
     if learning_df is not None and not learning_df.empty:
         show_confidence = st.checkbox("Show Confidence Bands", value=True, key='learning_confidence')
         
-        fig = create_learning_curve_plot(learning_df)
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            fig = create_learning_curve_plot(learning_df)
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error creating learning curve: {str(e)}")
         
         st.write("**Learning Curve Interpretation:**")
         st.write("- Converging curves = No significant overfitting")
