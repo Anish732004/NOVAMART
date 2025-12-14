@@ -81,7 +81,7 @@ def show():
         # Select metric
         metric = st.selectbox(
             "Select Metric",
-            options=['Revenue', 'Conversions', 'ROAS'],
+            options=['revenue', 'conversions', 'roas'],
             key='channel_metric'
         )
         
@@ -92,11 +92,11 @@ def show():
         }
         
         try:
-            if metric.lower() == 'roas':
+            if metric == 'roas':
                 channel_perf = campaign_df.groupby('channel')['roas'].mean().reset_index()
                 channel_perf.columns = ['channel', 'roas']
             else:
-                channel_perf = campaign_df.groupby('channel')[metric.lower()].sum().reset_index()
+                channel_perf = campaign_df.groupby('channel')[metric].sum().reset_index()
             
             if channel_perf.empty:
                 st.warning("No data available for selected metric")
