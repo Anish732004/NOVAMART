@@ -21,9 +21,6 @@ def show():
     # Load data
     geo_df = load_geographic_data()
     
-    # Display available columns
-    st.write(f"Available columns: {list(geo_df.columns)}")
-    
     # Identify available columns
     numeric_cols = geo_df.select_dtypes(include=['number']).columns.tolist()
     text_cols = geo_df.select_dtypes(include=['object']).columns.tolist()
