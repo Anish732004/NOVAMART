@@ -91,19 +91,25 @@ def show():
             'roas': 'Average ROAS'
         }
         
-        if metric == 'roas':
-            channel_perf = campaign_df.groupby('channel')['roas'].mean().reset_index()
-            channel_perf = channel_perf.rename(columns={'roas': metric})
-        else:
-            channel_perf = campaign_df.groupby('channel')[metric].sum().reset_index()
-        
-        fig = create_horizontal_bar_chart(
-            channel_perf,
-            metric,
-            'channel',
-            f'{metric_labels[metric]} by Channel'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            if metric == 'roas':
+                channel_perf = campaign_df.groupby('channel')['roas'].mean().reset_index()
+                channel_perf.columns = ['channel', 'roas']
+            else:
+                channel_perf = campaign_df.groupby('channel')[metric].sum().reset_index()
+            
+            if channel_perf.empty:
+                st.warning("No data available for selected metric")
+            else:
+                fig = create_horizontal_bar_chart(
+                    channel_perf,
+                    metric,
+                    'channel',
+                    f'{metric_labels[metric]} by Channel'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error creating chart: {str(e)}")
     
     # Additional insights
     st.markdown("---")

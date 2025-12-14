@@ -43,15 +43,31 @@ def create_horizontal_bar_chart(data: pd.DataFrame, x_col: str, y_col: str,
     """
     Create a horizontal bar chart.
     """
-    fig = px.barh(
-        data.sort_values(x_col),
-        x=x_col,
-        y=y_col,
-        color=color_col,
-        title=title,
-        labels={x_col: x_col.replace('_', ' ').title(), 
-                y_col: y_col.replace('_', ' ').title()}
-    )
+    try:
+        sorted_data = data.sort_values(x_col, ascending=True)
+    except:
+        sorted_data = data
+    
+    if color_col and color_col in data.columns:
+        fig = px.barh(
+            sorted_data,
+            x=x_col,
+            y=y_col,
+            color=color_col,
+            title=title,
+            labels={x_col: x_col.replace('_', ' ').title(), 
+                    y_col: y_col.replace('_', ' ').title()}
+        )
+    else:
+        fig = px.barh(
+            sorted_data,
+            x=x_col,
+            y=y_col,
+            title=title,
+            labels={x_col: x_col.replace('_', ' ').title(), 
+                    y_col: y_col.replace('_', ' ').title()}
+        )
+    
     fig.update_layout(
         height=400,
         showlegend=True,
